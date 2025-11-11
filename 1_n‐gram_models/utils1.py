@@ -1,7 +1,7 @@
 import datasets
 import requests
 
-from typing import Hashable, Iterable, OrderedDict
+from typing import Hashable, Iterable
 from pathlib import Path
 import string
 
@@ -58,7 +58,7 @@ def simple_tokenize(text: str, remove_symbols: bool = False) -> list[str]:
     return result
 
 
-def counter(items: Iterable[Hashable]) -> OrderedDict[Hashable, int]:
+def counter(items: Iterable[Hashable]) -> list[tuple[Hashable, int]]:
     """
     - Return:
         - unique items
@@ -69,4 +69,4 @@ def counter(items: Iterable[Hashable]) -> OrderedDict[Hashable, int]:
         obj_to_cnt[obj] = obj_to_cnt.get(obj, 0) + 1
 
     obj_cnt = sorted(obj_to_cnt.items(), key=lambda x: -x[-1])
-    return OrderedDict(obj_cnt)
+    return obj_cnt
