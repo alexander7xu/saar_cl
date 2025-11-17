@@ -59,7 +59,7 @@ torchtyping==0.1.5
 On my device, it requires:
 - **4.5min** to test N-Gram HMM with different `N` varies from `1` to `10`.
 - **2min** to test parallel performance with different `num_threads` varies from `0` to `10` with two different Tensor based implementation.
-- **19min** for unsupervised training on dev dataset (because it is small than the other splits) with 100 epochs.
+- **312min** for unsupervised training with 100 epochs. Take a Deep Sleep and wait for the result.
 - **2min** for any other tasks.
 
 ## Extra Points
