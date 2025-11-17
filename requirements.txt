@@ -1,9 +1,0 @@
-numpy
-matplotlib
-ipykernel
-ipywidgets
-nltk
-torch
-transformers
-datasets
-huggingface-hub
