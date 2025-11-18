@@ -3,6 +3,7 @@ from torchtyping import TensorType as T
 
 import abc
 from typing import Iterable, Self, override
+from copy import deepcopy
 
 from .utils import Counter
 
@@ -61,11 +62,12 @@ class HmmPosTaggerBase(HmmPosTaggerInterface):
 
     @override
     def export(self) -> dict[str, object]:
-        return self._probs
+        return deepcopy(self._probs)
 
     @override
     def load(self, data: dict[str, object]) -> Self:
         assert data.keys() == self._probs.keys()
+        data = deepcopy(data)
         self._probs = data
         return self
 
@@ -192,19 +194,21 @@ class HmmPosTaggerTensorBase(HmmPosTaggerBase):
 
     @override
     def export(self) -> dict[str, object]:
-        return {
+        data = {
             "probs": self._probs,
             "vocabulary": {
                 "state": self._state_to_idx.keys(),
                 "word": self._word_to_idx.keys(),
             },
         }
+        return deepcopy(data)
 
     @override
     def load(self, data: dict[str, object]) -> Self:
         assert data.keys() == {"probs", "vocabulary"}
         assert data["probs"].keys() == self._probs.keys()
         assert data["vocabulary"].keys() == {"state", "word"}
+        data = deepcopy(data)
         self._probs = data["probs"]
         self._states_name = tuple(data["vocabulary"]["state"])
         self._state_to_idx = {x: i for i, x in enumerate(self._states_name)}
@@ -274,11 +278,12 @@ class HmmPosTaggerSupervisedBase(HmmPosTaggerBase):
 
     @override
     def export(self) -> dict[str, object]:
-        return self._counters
+        return deepcopy(self._counters)
 
     @override
     def load(self, data: dict[str, object]) -> Self:
         assert data.keys() == self._counters.keys()
+        data = deepcopy(data)
         self._counters = data
         return self._parameterize()
 

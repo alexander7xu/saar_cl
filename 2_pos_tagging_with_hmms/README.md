@@ -57,13 +57,16 @@ torchtyping==0.1.5
 ## Runtime
 
 On my device, it requires:
+- **4min** to test "K-Masked Augmentation" with different `K` varies from `1` to `50`.
 - **4.5min** to test N-Gram HMM with different `N` varies from `1` to `10`.
 - **2min** to test parallel performance with different `num_threads` varies from `0` to `10` with two different Tensor based implementation.
 - **312min** for unsupervised training with 100 epochs. Take a Deep Sleep and wait for the result.
-- **2min** for any other tasks.
+- **2min** for all the other tasks.
 
 ## Extra Points
 
+- **Model IO:** `export` or `load` trained model.
+- **Better unseen words handling:** I proposed "K-Masked Augmentation". The best model on `dev` dataset achieves 91.8500% accuracy on `test` dataset, better than 90.8007% by baseline.
 - **N-Gram HMM:** Not only trigram, any positive integer `N` is acceptable.
 - **Parallel Tagging:** Use multithreading to speed up tagging.
 - **Tensor Based:** I've also implemented a special optimization, making it **~100% faster** in training.

@@ -103,6 +103,8 @@ class HmmNgramPosTagger(HmmPosTaggerSupervisedBase):
         def param(x: float):
             return torch.log(torch.tensor(x))
 
+        for v in self._probs.values():
+            v.clear()
         for prev_state in self._counters["prev_state"].keys():
             self._probs["transition"][prev_state] = dict()
         for state in self._counters["state"].keys():
@@ -168,6 +170,8 @@ class HmmPosTagger(HmmPosTaggerSupervisedBase, HmmPosTaggerTensorBase):
             )
             return (parse_grouped(x) for x in groupby(sorted_items, key=lambda x: x[0]))
 
+        for v in self._probs.values():
+            v[:] = -torch.inf
         transition, emission = self._probs["transition"], self._probs["emission"]
 
         counter_state = self._counters["state"]
@@ -200,6 +204,9 @@ class HmmPosTaggerDeprecated(HmmPosTagger):
         def param(x: float):
             return torch.log(torch.tensor(x))
 
+        for v in self._probs.values():
+            v[:] = -torch.inf
+
         for (prev_state, state), cnt in self._counters["transition"].items():
             v = self._state_to_idx[state]
             if prev_state == self.TAG_START:
@@ -221,6 +228,28 @@ class HmmPosTaggerDeprecated(HmmPosTagger):
             ).all()
             assert ((torch.exp(self._probs["emission"]).sum(1) - 1).abs() < 1e-6).all()
         return self
+
+
+class HmmMaskedPosTagger(HmmPosTagger):
+    WORD_UNSEEN = "__UNSEEN__"
+
+    def __init__(
+        self,
+        possible_states: Iterable[str],
+        possible_words: Iterable[str],
+    ) -> None:
+        possible_words = set(possible_words)
+        assert self.WORD_UNSEEN not in possible_words
+        possible_words.add(self.WORD_UNSEEN)
+        super().__init__(possible_states, possible_words)
+
+    @override
+    def _viterbi_one_timestep(
+        self, word: str, prev_states_probs: tuple[T["N"], T["N", int]] | None
+    ) -> tuple[T["N"], T["N", int]]:
+        return super()._viterbi_one_timestep(
+            word if word in self._word_to_idx else self.WORD_UNSEEN, prev_states_probs
+        )
 
 
 class UnsupervisedHmmPosTagger(HmmPosTaggerTensorBase):

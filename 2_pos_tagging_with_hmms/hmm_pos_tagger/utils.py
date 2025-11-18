@@ -1,6 +1,6 @@
 import torch
 
-from typing import TypeVar, Hashable
+from typing import TypeVar, Hashable, Self
 from collections import UserDict
 
 
@@ -8,12 +8,14 @@ CountedObjectT = TypeVar("CountedObjectT", bound=Hashable)
 
 
 class Counter(UserDict[CountedObjectT, int]):
-    def inc(self, item: CountedObjectT, cnt: int = 1) -> None:
+    def inc(self, item: CountedObjectT, cnt: int = 1) -> Self:
         self.data[item] = self.data.get(item, 0) + cnt
+        return self
 
-    def merge(self, other: "Counter") -> None:
-        for item, cnt in other:
+    def merge(self, other: "Counter") -> Self:
+        for item, cnt in other.items():
             self.inc(item, cnt)
+        return self
 
     def __getitem__(self, item: CountedObjectT) -> int:
         return self.data[item]
