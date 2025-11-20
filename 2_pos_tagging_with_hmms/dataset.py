@@ -37,7 +37,7 @@ def load_dataset_ud_german_gsd(
     split: str,
     return_labels: bool = False,
     local_cache: str | Path | None = None,
-) -> dict[str, object]:
+) -> dict[str, list[list[str]]]:
     """
     - Args:
         - split: train, dev, or test.
