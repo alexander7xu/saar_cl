@@ -1,6 +1,4 @@
-from typing import Iterable, Self, override
-from multiprocessing.synchronize import Barrier
-import multiprocessing
+from typing import Collection, Any, Self, override
 import threading
 
 from .base import HmmPosTaggerInterface, HmmPosTaggerBase
@@ -46,25 +44,25 @@ class HmmPosTaggerMultithreadingWrap(HmmPosTaggerInterface):
             thread.join()
 
     @override
-    def export(self) -> dict[str, object]:
+    def export(self) -> dict[str, Any]:
         return self._base_model.export()
 
     @override
-    def load(self, data: dict[str, object]) -> Self:
+    def load(self, data: dict[str, Any]) -> Self:
         self._base_model.load(data)
         return self
 
     @override
     def fit(
         self,
-        sentences: Iterable[Iterable[str]],
-        pos_tags_list: Iterable[Iterable[str]] | None = None,
+        sentences: Collection[Collection[str]],
+        pos_tags_list: Collection[Collection[str]] | None = None,
     ) -> Self:
         self._base_model.fit(sentences, pos_tags_list)
         return self
 
     @override
-    def tag(self, sentences: Iterable[Iterable[str]]) -> list[list[tuple[str, float]]]:
+    def tag(self, sentences: Collection[Collection[str]]) -> list[list[tuple[str, float]]]:
         self._shared["input"] = list(sentences)
         self._shared["output"] = [None] * len(sentences)
         self._signal_input_ready()
@@ -81,7 +79,7 @@ class HmmPosTaggerMultithreadingWrap(HmmPosTaggerInterface):
         num_threads: int,
         signal_input_ready: threading.Semaphore,
         signal_output_ready: threading.Barrier,
-        shared: dict[str, object],
+        shared: dict[str, Any],
     ) -> None:
         while True:
             signal_input_ready.acquire()

@@ -1,7 +1,7 @@
 import torch
 from torchtyping import TensorType as T
 
-from typing import Iterable, Self, override
+from typing import Collection, Self, override
 from itertools import groupby
 
 from .base import HmmPosTaggerSupervisedBase, HmmPosTaggerTensorBase
@@ -41,7 +41,7 @@ class HmmNgramPosTagger(HmmPosTaggerSupervisedBase):
         if prev_states_probs is None:
             prev_states_probs = self._init_states_probs
 
-        results, seen = dict[tuple[str, ...], tuple[tuple[str, ...], float]](), set()
+        results, seen = dict[tuple[str, ...], tuple[float, tuple[str, ...]]](), set()
         for prev_stat, (prob_v, _) in prev_states_probs.items():
             transition = self._probs["transition"].get(prev_stat, None)
             if transition is None:  # Only occurs when the model is not trained
@@ -87,7 +87,7 @@ class HmmNgramPosTagger(HmmPosTaggerSupervisedBase):
 
     @override
     def _fit_one_sentence(
-        self, sentence: Iterable[str], pos_tags: Iterable[str]
+        self, sentence: Collection[str], pos_tags: Collection[str]
     ) -> Self:
         prev_state = (self.TAG_START,) * self._n_previous_states
         for word, tag in zip(sentence, pos_tags):
@@ -128,8 +128,8 @@ class HmmPosTagger(HmmPosTaggerSupervisedBase, HmmPosTaggerTensorBase):
 
     def __init__(
         self,
-        possible_states: Iterable[str],
-        possible_words: Iterable[str],
+        possible_states: Collection[str],
+        possible_words: Collection[str],
     ) -> None:
         self._counters: dict[str, Counter] = {
             "state": Counter[str](),
@@ -143,7 +143,7 @@ class HmmPosTagger(HmmPosTaggerSupervisedBase, HmmPosTaggerTensorBase):
 
     @override
     def _fit_one_sentence(
-        self, sentence: Iterable[str], pos_tags: Iterable[str]
+        self, sentence: Collection[str], pos_tags: Collection[str]
     ) -> Self:
         prev_state = self.TAG_START
         for word, tag in zip(sentence, pos_tags):
@@ -235,8 +235,8 @@ class HmmMaskedPosTagger(HmmPosTagger):
 
     def __init__(
         self,
-        possible_states: Iterable[str],
-        possible_words: Iterable[str],
+        possible_states: Collection[str],
+        possible_words: Collection[str],
     ) -> None:
         possible_words = set(possible_words)
         assert self.WORD_UNSEEN not in possible_words
@@ -260,7 +260,7 @@ class UnsupervisedHmmPosTagger(HmmPosTaggerTensorBase):
     def __init__(
         self,
         num_states: int,
-        possible_words: Iterable[str],
+        possible_words: Collection[str],
         init_seed: int = 42,
     ) -> None:
         possible_states = map(str, range(num_states))
@@ -337,8 +337,8 @@ class UnsupervisedHmmPosTagger(HmmPosTaggerTensorBase):
     @override
     def _fit_one_sentence(
         self,
-        sentence: Iterable[str],
-        pos_tags: Iterable[str] | None = None,
+        sentence: Collection[str],
+        pos_tags: Collection[str] | None = None,
     ) -> Self:
         y_idx = torch.tensor([self._word_to_idx[x] for x in sentence])
         gamma, xi = self._e_step(y_idx)
@@ -348,8 +348,8 @@ class UnsupervisedHmmPosTagger(HmmPosTaggerTensorBase):
     @override
     def fit(
         self,
-        sentences: Iterable[Iterable[str]],
-        pos_tags_list: Iterable[Iterable[str]] | None = None,
+        sentences: Collection[Collection[str]],
+        pos_tags_list: Collection[Collection[str]] | None = None,
     ) -> Self:
         super().fit(sentences, pos_tags_list)
         tiny = torch.finfo(self._probs["init"].dtype).tiny

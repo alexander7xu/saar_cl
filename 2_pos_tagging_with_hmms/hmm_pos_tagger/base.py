@@ -2,7 +2,7 @@ import torch
 from torchtyping import TensorType as T
 
 import abc
-from typing import Iterable, Self, override
+from typing import Collection, Any, Self, override
 from copy import deepcopy
 
 from .utils import Counter
@@ -10,20 +10,20 @@ from .utils import Counter
 
 class HmmPosTaggerInterface(abc.ABC):
     @abc.abstractmethod
-    def export(self) -> dict[str, object]:
+    def export(self) -> dict[str, Any]:
         """
         Export the model parameters as dict.
         - Return: dict of model parameters.
         """
 
     @abc.abstractmethod
-    def load(self, data: dict[str, object]) -> Self:
+    def load(self, data: dict[str, Any]) -> Self:
         """
         Load model parameters from dict.
         """
 
     @abc.abstractmethod
-    def tag(self, sentences: Iterable[Iterable[str]]) -> list[list[tuple[str, float]]]:
+    def tag(self, sentences: Collection[Collection[str]]) -> list[list[tuple[str, float]]]:
         """
         Perform pos-tagging on the given sentences.
         - Args:
@@ -35,8 +35,8 @@ class HmmPosTaggerInterface(abc.ABC):
     @abc.abstractmethod
     def fit(
         self,
-        sentences: Iterable[Iterable[str]],
-        pos_tags_list: Iterable[Iterable[str]] | None = None,
+        sentences: Collection[Collection[str]],
+        pos_tags_list: Collection[Collection[str]] | None = None,
     ) -> Self:
         """
         Train the model on given sentences.
@@ -51,28 +51,28 @@ class HmmPosTaggerBase(HmmPosTaggerInterface):
     Base class of HMM POS Taggers.
 
     Children classes must call super().__init__() and implement the following methods:
-    - `_viterbi_one_timestep(self, word: str, prev_states_probs: object) -> object`
+    - `_viterbi_one_timestep(self, word: str, prev_states_probs: Any) -> Any`
     - `_trace_best_states(self, states_probs_list: list) -> list[tuple[str, float]]`
     - `_fit_one_sentence(self, sentence: list[str], pos_tags: list[str] | None = None) -> Self`
     """
 
-    def __init__(self, probs: dict[str, object]) -> None:
+    def __init__(self, probs: dict[str, Any]) -> None:
         super().__init__()
         self._probs = probs
 
     @override
-    def export(self) -> dict[str, object]:
+    def export(self) -> dict[str, Any]:
         return deepcopy(self._probs)
 
     @override
-    def load(self, data: dict[str, object]) -> Self:
+    def load(self, data: dict[str, Any]) -> Self:
         assert data.keys() == self._probs.keys()
         data = deepcopy(data)
         self._probs = data
         return self
 
     @override
-    def tag(self, sentences: Iterable[Iterable[str]]) -> list[list[tuple[str, float]]]:
+    def tag(self, sentences: Collection[Collection[str]]) -> list[list[tuple[str, float]]]:
         results = list()
         for words_list in sentences:
             assert len(words_list) > 0
@@ -87,8 +87,8 @@ class HmmPosTaggerBase(HmmPosTaggerInterface):
     @override
     def fit(
         self,
-        sentences: Iterable[Iterable[str]],
-        pos_tags_list: Iterable[Iterable[str]] | None = None,
+        sentences: Collection[Collection[str]],
+        pos_tags_list: Collection[Collection[str]] | None = None,
     ) -> Self:
         if pos_tags_list is not None:
             for sentence, pos_tags in zip(sentences, pos_tags_list):
@@ -102,8 +102,8 @@ class HmmPosTaggerBase(HmmPosTaggerInterface):
 
     @abc.abstractmethod
     def _viterbi_one_timestep(
-        self, word: str, prev_states_probs: object | None
-    ) -> object:
+        self, word: str, prev_states_probs: Any | None
+    ) -> Any:
         """
         Perform Viterbi algorithm to predict pos-tag given word and previous states.
         - Args:
@@ -122,8 +122,8 @@ class HmmPosTaggerBase(HmmPosTaggerInterface):
     @abc.abstractmethod
     def _fit_one_sentence(
         self,
-        sentence: Iterable[str],
-        pos_tags: Iterable[str] | None = None,
+        sentence: Collection[str],
+        pos_tags: Collection[str] | None = None,
     ) -> Self:
         """
         Train the model on the given sentence.
@@ -145,8 +145,8 @@ class HmmPosTaggerTensorBase(HmmPosTaggerBase):
 
     def __init__(
         self,
-        possible_states: Iterable[str],
-        possible_words: Iterable[str],
+        possible_states: Collection[str],
+        possible_words: Collection[str],
         probs_init_seed: int | None = None,
     ) -> None:
         """
@@ -193,7 +193,7 @@ class HmmPosTaggerTensorBase(HmmPosTaggerBase):
         super().__init__(probs)
 
     @override
-    def export(self) -> dict[str, object]:
+    def export(self) -> dict[str, Any]:
         data = {
             "probs": self._probs,
             "vocabulary": {
@@ -204,7 +204,7 @@ class HmmPosTaggerTensorBase(HmmPosTaggerBase):
         return deepcopy(data)
 
     @override
-    def load(self, data: dict[str, object]) -> Self:
+    def load(self, data: dict[str, Any]) -> Self:
         assert data.keys() == {"probs", "vocabulary"}
         assert data["probs"].keys() == self._probs.keys()
         assert data["vocabulary"].keys() == {"state", "word"}
@@ -264,7 +264,7 @@ class HmmPosTaggerSupervisedBase(HmmPosTaggerBase):
     export / load counters rather than probs for continuous learning
 
     Children classes must call super().__init__() and implement the following methods:
-    - `_viterbi_one_timestep(self, word: str, prev_states_probs: object) -> object`
+    - `_viterbi_one_timestep(self, word: str, prev_states_probs: Any) -> Any`
     - `_trace_best_states(self, states_probs_list: list) -> list[tuple[str, float]]`
     - `_fit_one_sentence(self, sentence: list[str], pos_tags: list[str]) -> Self`
     - `_parameterize(self) -> Self`
@@ -272,16 +272,16 @@ class HmmPosTaggerSupervisedBase(HmmPosTaggerBase):
 
     TAG_START = "__START__"
 
-    def __init__(self, probs: dict[str, object], counters: dict[str, Counter]) -> None:
+    def __init__(self, probs: dict[str, Any], counters: dict[str, Counter]) -> None:
         super().__init__(probs)
         self._counters = counters
 
     @override
-    def export(self) -> dict[str, object]:
+    def export(self) -> dict[str, Any]:
         return deepcopy(self._counters)
 
     @override
-    def load(self, data: dict[str, object]) -> Self:
+    def load(self, data: dict[str, Any]) -> Self:
         assert data.keys() == self._counters.keys()
         data = deepcopy(data)
         self._counters = data
@@ -290,8 +290,8 @@ class HmmPosTaggerSupervisedBase(HmmPosTaggerBase):
     @override
     def fit(
         self,
-        sentences: Iterable[Iterable[str]],
-        pos_tags_list: Iterable[Iterable[str]] | None = None,
+        sentences: Collection[Collection[str]],
+        pos_tags_list: Collection[Collection[str]] | None = None,
     ) -> Self:
         super().fit(sentences, pos_tags_list)
         return self._parameterize()
