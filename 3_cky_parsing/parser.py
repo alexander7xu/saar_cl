@@ -13,13 +13,13 @@ def grammar_to_dict(
     terminal = dict[str, set[str]]()
 
     for item in grammar.productions():
-        assert isinstance(item, nltk.grammar.Production)
+        assert isinstance(item, nltk.Production)
         parent, children = item.lhs(), item.rhs()
-        assert isinstance(parent, nltk.grammar.Nonterminal)
+        assert isinstance(parent, nltk.Nonterminal)
         assert 1 <= len(children) <= 2
         if len(children) == 2:
-            assert isinstance(children[0], nltk.grammar.Nonterminal)
-            assert isinstance(children[1], nltk.grammar.Nonterminal)
+            assert isinstance(children[0], nltk.Nonterminal)
+            assert isinstance(children[1], nltk.Nonterminal)
             children = (children[0].symbol(), children[1].symbol())
             nt_children = nonterminal.get(children, None)
             if nt_children is None:

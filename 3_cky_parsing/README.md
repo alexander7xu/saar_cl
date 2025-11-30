@@ -39,5 +39,6 @@ svgling==0.5.0
 
 ## Extra Points
 
+- I implemented a method to convert the nltk format CFG into Chomsky Normal Form.
 - I implemented the method to count the number of parse trees without actually computing these parse trees.
 - I plotted a Sentence Length vs. Speed & Number of Trees curve to compare the efficiency.
