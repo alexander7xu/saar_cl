@@ -7,11 +7,19 @@ Juangui Xu
 ## Directory Structure
 
 ```
-    dataset.py              -- Dataset-related functions
-    main.ipynb              -- Main assignment notebook
-    parser.py               -- Definition of Parser class
-    parsing_results.txt     -- number of parses per sentence
-    README.md               -- This README file
+│   dataset.py                  -- grammar and sentences loading
+│   main.ipynb                  -- main Notebook
+│   measure.py                  -- F1 score calculation function
+│   parser.py                   -- Parser class, the main part of CKY algorithm
+│   parsing_results.txt         -- Parses counts of sentences
+│   README.md                   -- This README file
+│
+└───chart
+        backpointer.py          -- BackpointerChar class, used for building trees
+        base.py                 -- ChartBase, base class of chart classes
+        counting.py             -- CountingChart class, used for counting without building trees
+        prob_backpointer.py     -- ProbBackpointerChart class, used for ViterbiCKY
+        __init__.py             -- This README file
 ```
 
 ## Environments
@@ -35,10 +43,12 @@ svgling==0.5.0
 ## Runtime
 
 - It take shorter than 10s on my computer to parse / count all 98 sentences in the dataset.
-- However, running NLTK parser to get ground truth counts will take ~3min. Therefore, I suggest those who reproduce my expriment to save the ground truth counts in the first run, and read it directly from the file latter.
+- However, running NLTK parser to get ground truths will take ~1min.
 
 ## Extra Points
 
 - I implemented a method to convert the nltk format CFG into Chomsky Normal Form.
 - I implemented the method to count the number of parse trees without actually computing these parse trees.
 - I plotted a Sentence Length vs. Speed & Number of Trees curve to compare the efficiency.
+- I implemented the labeled and unlabeled F1 score calculation.
+- I implemented the Viterbi CKY parser, it achieved `F1=1.0` when compared with `nltk.ViterbiParser` on all sentences.

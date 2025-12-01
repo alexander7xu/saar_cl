@@ -54,16 +54,13 @@ def convert_cfg_to_chomsky_normal_form(
         # Convert multi-branch tree into binary tree
         all_rhs = list[nltk.Nonterminal](rhs)
         root = lhs.symbol()
+        all_symbols = [root] + list(map(lambda x: x.symbol(), all_rhs))
         while len(all_rhs) > 2:
             child_right = all_rhs.pop()
-            assert isinstance(child_right, nltk.Nonterminal)
-            child_left = nltk.Nonterminal(
-                f"__{root}__{'__'.join(map(lambda x: x.symbol(), all_rhs))}__"
-            )
+            all_symbols.pop()
+            child_left = nltk.Nonterminal(f"__{'__'.join(all_symbols)}__")
             productions.add(nltk.Production(lhs, (child_left, child_right)))
             lhs = child_left
-        assert isinstance(all_rhs[0], nltk.Nonterminal)
-        assert isinstance(all_rhs[1], nltk.Nonterminal)
         productions.add(nltk.Production(lhs, all_rhs))
 
     res = nltk.CFG(start, productions)
