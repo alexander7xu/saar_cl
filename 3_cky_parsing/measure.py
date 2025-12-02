@@ -1,7 +1,7 @@
 import nltk
 
 
-def tree_span(tree: nltk.Tree) -> set[tuple[str, int, int]]:
+def tree_to_spans(tree: nltk.Tree) -> list[tuple[str, int, int]]:
     r"""
     Convert a tree into span with format (label, left, right)
 
@@ -23,54 +23,49 @@ def tree_span(tree: nltk.Tree) -> set[tuple[str, int, int]]:
     ``` 
     """
 
-    results = set[tuple[str, int, int]]()
+    results = list[tuple[str, int, int]]()
 
-    def recur(root: nltk.Tree, index: int) -> int:
-        assert 1 <= len(root) <= 2
-        if len(root) == 1:  # Leaf
-            assert type(root[0]) in (nltk.Nonterminal, str)
-            results.add((root.label(), index, index))
+    def recur(root: nltk.Tree | nltk.Nonterminal | str, index: int) -> int:
+        if not isinstance(root, nltk.Tree):  # Leaf
+            if isinstance(root, nltk.Nonterminal):
+                root = root.symbol()
+            assert isinstance(root, str)
+            results.append((root, index, index))
             return index
 
-        left_tree, right_tree = root
-        assert isinstance(left_tree, nltk.Tree)
-        assert isinstance(right_tree, nltk.Tree)
-        end_index = recur(left_tree, index)
-        end_index = recur(right_tree, end_index)
-        results.add((root.label(), index, end_index))
+        assert len(root) > 0
+        end_index = index - 1  # it will >= index because have at least one subtree
+        for subtree in root:
+            end_index = recur(subtree, end_index + 1)
+        results.append((root.label(), index, end_index))
         return end_index
 
     recur(tree, 0)
     return results
 
 
-def set_f1_score(gt: set, pred: set) -> float:
-    ins = gt & pred
-    """
-    precision = len(ins) / len(gt)
-    recall = len(ins) / len(pred)
-    f1 = 2 * precision * recall / (precision + recall)
-
-      2 * u/x * u/y     /   (u/x + u/y)
-    = 2*u*u / (x*y)     /   (u * (x+y) / (x*y))
-    = 2*u / (x*y)       /   ((x+y) / (x*y))
-    = 2*u               /   (x+y)
-    Calculate with integers for better result precision
-    """
-    f1 = 2 * len(ins) / (len(gt) + len(pred))
-    return f1
-
-
 def tree_f1_score(tree_gt: nltk.Tree, tree_pred: nltk.Tree, unlabeled: bool) -> float:
     """
     Calculate the f1 score of two nltk.Tree.
     """
-    span_gt = tree_span(tree_gt)
-    span_pred = tree_span(tree_pred)
+
+    def _span_same_rate(spans: list[tuple], same: set[tuple]) -> float:
+        # calculate the rate that items in span occurs in gt
+        correct = 0
+        for item in spans:
+            correct += int(item in same)
+        return correct / len(spans)
+
+    spans_gt = tree_to_spans(tree_gt)
+    spans_pred = tree_to_spans(tree_pred)
 
     if unlabeled:  # Remove labels
-        span_gt = {x[1:] for x in span_gt}
-        span_pred = {x[1:] for x in span_pred}
+        spans_gt = [x[1:] for x in spans_gt]
+        spans_pred = [x[1:] for x in spans_pred]
 
-    f1 = set_f1_score(span_gt, span_pred)
+    same = set(spans_gt) & set(spans_pred)
+    precision = _span_same_rate(spans_pred, same)
+    recall = _span_same_rate(spans_gt, same)
+
+    f1 = 2 * precision * recall / (precision + recall)
     return f1

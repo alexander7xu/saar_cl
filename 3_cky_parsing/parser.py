@@ -51,9 +51,10 @@ class CkyParser:
     """
 
     def __init__(self, grammar: nltk.CFG) -> None:
-        self._inv_nonterminal_production, self._inv_terminal_production = (
-            grammar_to_dict(grammar)
-        )
+        (
+            self._inv_nonterminal_production,  # (left, right) => {NT for all NT -> left right}
+            self._inv_terminal_production,  # word => {NT for all NT -> word}
+        ) = grammar_to_dict(grammar)
         self._start_symbol: str = grammar.start().symbol()
 
     def _cky_parse_one_sentence(self, sentence: list[str], chart: ChartBase) -> None:

@@ -48,11 +48,11 @@ svgling==0.5.0
 ## Extra Points
 
 - I implemented a method to convert the nltk format CFG into Chomsky Normal Form.
-- I implemented the method to count the number of parse trees without actually computing these parse trees.
-- I plotted a Sentence Length vs. Speed & Number of Trees curve to compare the efficiency.
-- I implemented the labeled and unlabeled F1 score calculation.
-- I implemented the algorithm to build PCFG based on all the parse trees from my parser.
-- I implemented the Viterbi CKY parser, it achieved `F1=1.0` when compared with `nltk.ViterbiParser` on all sentences.
+- I implemented a method to count the number of parse trees without actually building them.
+- I plotted a Sentence Length vs. Speed & Number of Trees curve to compare the efficiency (**in nanosecond precision**).
+- I implemented the labeled and unlabeled F1 score calculation and tested it with the example parse trees of sentence `But the concept is workable`.
+- I implemented an algorithm to build PCFG based on all the parse trees from my parser.
+- I implemented a Viterbi CKY parser, and compared it against `nltk.ViterbiParser` on all sentences.
 
 ## Engineering Design Ideas
 
