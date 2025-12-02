@@ -1,5 +1,5 @@
 import abc
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Any
 from collections import defaultdict
 
 
@@ -81,6 +81,13 @@ class ChartBase(Generic[RecordedT], abc.ABC):
         parent_symbol -> (left_symbol, right_symbol).
 
         The range of left is [left_idx, mid_idx], and [mid_idx+1, right_idx] for right.
+        """
+        pass
+
+    @abc.abstractmethod
+    def output(self, root_symbol: str) -> Any:
+        """
+        Build final output based on the whole chart
         """
         pass
 

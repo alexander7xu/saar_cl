@@ -1,4 +1,4 @@
-from typing import override
+from typing import Any, override
 
 from .base import ChartBase
 
@@ -20,6 +20,10 @@ class CountingChart(ChartBase[int]):
         left_count = self.get(left_idx, mid_idx)[left_symbol]
         right_count = self.get(mid_idx + 1, right_idx)[right_symbol]
         self.get(left_idx, right_idx)[parent_symbol] += left_count * right_count
+
+    @override
+    def output(self, root_symbol: str) -> int:
+        return self.get(0, self.sentence_length - 1)[root_symbol]
 
     @override
     def _init_terminal_record(self, idx: int, word: str, parent: str) -> int:

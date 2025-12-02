@@ -66,9 +66,7 @@ class CkyParser:
             for nt in self._nonterminal.get((left_symbol, right_symbol), ()):
                 chart.add(left, right, mid, left_symbol, right_symbol, nt)
 
-    def _cky_parse_one_sentence(
-        self, sentence: list[str], chart: ChartBase
-    ) -> ChartBase:
+    def _cky_parse_one_sentence(self, sentence: list[str], chart: ChartBase) -> None:
         # Terminal records are initialized by the Chart class.
         assert isinstance(chart, ChartBase)
         # for each width b from 2 to n:
@@ -79,32 +77,29 @@ class CkyParser:
                 # for each left width k from 1 to b-1:
                 for mid in range(left, right):
                     self._induce(chart, left, right, mid)
-        return chart
 
     def parse(self, sentence: list[str]) -> list[nltk.Tree]:
         """
         Return all parse trees of the given sentence.
         """
         chart = BackpointerChart(sentence, self._terminal)
-        record = self._cky_parse_one_sentence(sentence, chart)
-        assert isinstance(record, BackpointerChart)
-        trees = record.trace(self._start_symbol)
+        self._cky_parse_one_sentence(sentence, chart)
+        trees = chart.output(self._start_symbol)
         return trees
 
     def count(self, sentence: list[str]) -> int:
         """
         Return the **count** of all parse trees of the given sentence.
         """
-        record = CountingChart(sentence, self._terminal)
-        record = self._cky_parse_one_sentence(sentence, record)
-        cnt = record.get(0, len(sentence) - 1)[self._start_symbol]
+        chart = CountingChart(sentence, self._terminal)
+        self._cky_parse_one_sentence(sentence, chart)
+        cnt = chart.output(self._start_symbol)
         return cnt
 
     def recognize(self, sentence: list[str]) -> bool:
         """
         Return whether the given sentence is grammatical.
         """
-
         # Just used a counter, because they are same in terms of time complexity.
         return self.count(sentence) > 0
 
@@ -122,11 +117,9 @@ class CkyParser:
         - terminal_probs: dict with the strcuture (NT, T) => probs
         - nonterminal_probs: dict with the strcuture (Left, Right, Parent) => probs
         """
-
-        record = ProbBackpointerChart(
+        chart = ProbBackpointerChart(
             sentence, self._terminal, terminal_probs, nonterminal_probs
         )
-        record = self._cky_parse_one_sentence(sentence, record)
-        assert isinstance(record, ProbBackpointerChart)
-        tree = record.trace(self._start_symbol)
+        self._cky_parse_one_sentence(sentence, chart)
+        tree = chart.output(self._start_symbol)
         return tree

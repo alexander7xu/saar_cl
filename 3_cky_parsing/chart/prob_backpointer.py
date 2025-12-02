@@ -74,6 +74,37 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
             )
 
     @override
+    def output(self, root_symbol: str) -> nltk.ProbabilisticTree | None:
+        """
+        Find out the parse tree with max probability with $root_symbol as root in the records.
+        """
+        if root_symbol not in self.get(0, self.sentence_length - 1).keys():
+            return None
+
+        def recur(left: int, right: int, symbol: str | None = None):
+            record = self.get(left, right)
+            # $symbol should be current node with max probability, or `start` for root node.
+            if symbol is None:
+                symbol = self._dict_argmax(record)
+            record = record[symbol]
+
+            if left == right:  # For leaf, left_symbol=right_symbol=word
+                return nltk.ProbabilisticTree(
+                    symbol, [record.left_symbol], prob=math.exp(record.logprob)
+                )
+
+            # Find out left and right subtrees and construct current tree.
+            left_tree = recur(left, record.mid_idx, record.left_symbol)
+            right_tree = recur(record.mid_idx + 1, right, record.right_symbol)
+            result = nltk.ProbabilisticTree(
+                symbol, [left_tree, right_tree], prob=math.exp(record.logprob)
+            )
+            return result
+
+        result = recur(0, self.sentence_length - 1, root_symbol)
+        return result
+
+    @override
     def _init_terminal_record(
         self, idx: int, word: str, parent: str
     ) -> ProbBackpointerRecord:
@@ -103,33 +134,3 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
                 best_prob, best_key = rec.logprob, k
         assert best_key is not None
         return best_key
-
-    def trace(self, root_symbol: str) -> nltk.ProbabilisticTree | None:
-        """
-        Find out the parse tree with max probability with $root_symbol as root in the records.
-        """
-        if root_symbol not in self.get(0, self.sentence_length - 1).keys():
-            return None
-
-        def recur(left: int, right: int, symbol: str | None = None):
-            record = self.get(left, right)
-            # $symbol should be current node with max probability, or `start` for root node.
-            if symbol is None:
-                symbol = self._dict_argmax(record)
-            record = record[symbol]
-
-            if left == right:  # For leaf, left_symbol=right_symbol=word
-                return nltk.ProbabilisticTree(
-                    symbol, [record.left_symbol], prob=math.exp(record.logprob)
-                )
-
-            # Find out left and right subtrees and construct current tree.
-            left_tree = recur(left, record.mid_idx, record.left_symbol)
-            right_tree = recur(record.mid_idx + 1, right, record.right_symbol)
-            result = nltk.ProbabilisticTree(
-                symbol, [left_tree, right_tree], prob=math.exp(record.logprob)
-            )
-            return result
-
-        result = recur(0, self.sentence_length - 1, root_symbol)
-        return result

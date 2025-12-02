@@ -81,13 +81,14 @@ Output: Recording.output(1,n,sigma)
 
 For example, the structure of `Recording` could be counting for CKY counter, backpointers for standard parser, and backpointers with probability for viterbi parser.
 
-Therefore, we can design the chart as an abstract data structure class and implement it as different subclasses. By providing the same CKY algorithm backbone with these different chart object, we are able to avoid rewriting the backbone for every algorithm variants, thereby achieving the goal of efficient code reuse. As we seen in the pseudo-code, the interface of a chart class should contain `add()`, `init()`, and `default()` methods, which will be implemented by the subclasses.
+Therefore, we can design the chart as an abstract data structure class and implement it as different subclasses. By providing the same CKY algorithm backbone with these different chart object, we are able to avoid rewriting the backbone for every algorithm variants, thereby achieving the goal of efficient code reuse. As we seen in the pseudo-code, the interface of a chart class should contain `add()`, `init()`, `default()`, and `output()` methods, which will be implemented by the subclasses.
 
-## The core algorithm parts in the code
+## The Core Algorithm Parts in the Code
 
 Chart classes: I use OOP to implement a base class with several chart subclasses in `./chart/`.
 - The base class implemented the access abstraction of chart. Note that its compact structure **saves 50% of the space**.
 - The base class define abstract method `ChartBase.add()` that need to be implemented by subclasses for main chart actions when induction in CKY algorithm.
+- The base class define abstract method `ChartBase.output()` that need to be implemented by subclasses for producing the final result based on the whole chart.
 - The base class define abstract method `ChartBase._init_terminal_record()` that need to be implemented by subclasses for the terminal initialization in CKY algorithm.
 - The base class define abstract method `ChartBase._make_default_record()` that need to be implemented by subclasses for the default value in CKY algorithm.
 - Subclasses are highly correlated with CKY algorithm variants, hence I will note them in the parser.

@@ -37,20 +37,7 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
         self.get(left_idx, right_idx)[parent_symbol].append(new_rec)
 
     @override
-    def _init_terminal_record(
-        self, idx: int, word: str, parent: str
-    ) -> list[BackpointerRecord]:
-        """
-        Record the index and word in sentence corresponding to a leaf.
-        """
-        return [BackpointerRecord(mid_idx=idx, left_symbol=word, right_symbol=word)]
-
-    @staticmethod
-    @override
-    def _make_default_record() -> list[BackpointerRecord]:
-        return list()
-
-    def trace(self, root_symbol: str) -> list[nltk.Tree]:
+    def output(self, root_symbol: str) -> list[nltk.Tree]:
         """
         Find out all parse trees with $root_symbol as root in the records.
         """
@@ -86,3 +73,17 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
 
         results = recur(0, self.sentence_length - 1, root_symbol)
         return results
+
+    @override
+    def _init_terminal_record(
+        self, idx: int, word: str, parent: str
+    ) -> list[BackpointerRecord]:
+        """
+        Record the index and word in sentence corresponding to a leaf.
+        """
+        return [BackpointerRecord(mid_idx=idx, left_symbol=word, right_symbol=word)]
+
+    @staticmethod
+    @override
+    def _make_default_record() -> list[BackpointerRecord]:
+        return list()
