@@ -138,8 +138,8 @@ Chart classes: I use OOP to implement a base class with several chart subclasses
 CKY recognizing: `CkyParser.recognize()` in `./parser.py`. I did not implement a independent recognizer because **it is unnecessary**. Given the fact that it share the same time and space complexity with counting, it is wiser to directly use the result of CKY counting.
 
 CKY parsing: `CkyParser.parse()` in `./parser.py`
-- `CkyParser._cky_parse_one_sentence()` in `./parser.py` implements the core logic (the 3 loops for Dynamic Programming).
-- `CkyParser._reduce()` in `./parser.py` implements the recude action of CKY. I separated it from `CkyParser._cky_parse_one_sentence` because the depth of loops was too large to make the code ugly.
+- `CkyParser._cky_one_sentence()` in `./parser.py` implements the core logic (the 3 loops for Dynamic Programming).
+- `CkyParser._reduce()` in `./parser.py` implements the recude action of CKY (2 inner loops). I separated it from `CkyParser._cky_one_sentence` because the depth of loops is too large to make the code ugly.
 - `BackpointerChart.reduce()` in `./chart/backpointer.py` implements the chart record method.
 - `BackpointerChart.output()` in `./chart/backpointer.py` build trees according to the final chart.
 

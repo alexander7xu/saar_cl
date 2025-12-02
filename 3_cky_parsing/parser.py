@@ -57,7 +57,7 @@ class CkyParser:
         ) = grammar_to_dict(grammar)
         self._start_symbol: str = grammar.start().symbol()
 
-    def _cky_parse_one_sentence(self, sentence: list[str], chart: ChartBase) -> None:
+    def _cky_one_sentence(self, sentence: list[str], chart: ChartBase) -> None:
         """
         Main logic of CKY algorithm.
         """
@@ -77,21 +77,19 @@ class CkyParser:
         Try to reduce (left, mid) (mid+1, right) -> (left, right) with all possible rules
         """
         # for each B in Ch(i,i+k) and C in Ch(i+k,i+b):
-        for left_symbol, right_symbol in product(
+        for left_nt, right_nt in product(
             chart.get(left, mid).keys(), chart.get(mid + 1, right).keys()
         ):
             # for each production rule A -> B C:
-            for nt in self._inv_nonterminal_production.get(
-                (left_symbol, right_symbol), ()
-            ):
-                chart.reduce(left, right, mid, left_symbol, right_symbol, nt)
+            for pa_nt in self._inv_nonterminal_production.get((left_nt, right_nt), ()):
+                chart.reduce(left, right, mid, left_nt, right_nt, pa_nt)
 
     def parse(self, sentence: list[str]) -> list[nltk.Tree]:
         """
         Return all parse trees of the given sentence.
         """
         chart = BackpointerChart(sentence, self._inv_terminal_production)
-        self._cky_parse_one_sentence(sentence, chart)
+        self._cky_one_sentence(sentence, chart)
         trees = chart.output(self._start_symbol)
         return trees
 
@@ -100,7 +98,7 @@ class CkyParser:
         Return the **count** of all parse trees of the given sentence.
         """
         chart = CountingChart(sentence, self._inv_terminal_production)
-        self._cky_parse_one_sentence(sentence, chart)
+        self._cky_one_sentence(sentence, chart)
         cnt = chart.output(self._start_symbol)
         return cnt
 
@@ -130,6 +128,6 @@ class CkyParser:
             leaf_probs=terminal_production_probs,
             nonleaf_probs=nonterminal_production_probs,
         )
-        self._cky_parse_one_sentence(sentence, chart)
+        self._cky_one_sentence(sentence, chart)
         tree = chart.output(self._start_symbol)
         return tree
