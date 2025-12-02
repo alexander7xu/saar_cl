@@ -100,6 +100,14 @@ class CkyParser:
         cnt = record.get(0, len(sentence) - 1)[self._start_symbol]
         return cnt
 
+    def recognize(self, sentence: list[str]) -> bool:
+        """
+        Return whether the given sentence is grammatical.
+        """
+
+        # Just used a counter, because they are same in terms of time complexity.
+        return self.count(sentence) > 0
+
     def viterbi(
         self,
         sentence: list[str],

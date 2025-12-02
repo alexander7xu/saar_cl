@@ -34,8 +34,7 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
         new_rec = BackpointerRecord(
             mid_idx=mid_idx, left_symbol=left_symbol, right_symbol=right_symbol
         )
-        records = self.get(left_idx, right_idx)
-        records[parent_symbol].append(new_rec)
+        self.get(left_idx, right_idx)[parent_symbol].append(new_rec)
 
     @override
     def _init_terminal_record(
