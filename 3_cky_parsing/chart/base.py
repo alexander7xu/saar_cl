@@ -41,10 +41,13 @@ class ChartBase(Generic[RecordedT], abc.ABC):
         self._sentence_length = len(sentence)
         assert self._sentence_length > 0
 
+        # Create the storage structure
         self._data = [
             defaultdict[str, RecordedT](self._make_default_record)
             for _ in range((self._sentence_length + 1) * self._sentence_length // 2)
         ]
+
+        # Initializing leaf records
         for idx, word in enumerate(sentence):
             for nt in inv_terminal_productions.get(word, ()):
                 init_rec = self._init_leaf_record(idx, word, nt)
