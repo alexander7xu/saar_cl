@@ -25,14 +25,10 @@ def tree_to_spans(tree: nltk.Tree) -> list[tuple[str, int, int]]:
 
     results = list[tuple[str, int, int]]()
 
-    def recur(root: nltk.Tree | nltk.Nonterminal | str, index: int) -> int:
-        if not isinstance(root, nltk.Tree):  # Leaf
-            if isinstance(root, nltk.Nonterminal):
-                root = root.symbol()
-            assert isinstance(root, str)
-            results.append((root, index, index))
+    def recur(root: nltk.Tree | str, index: int) -> int:
+        if isinstance(root, str):  # Ignore words
             return index
-
+        assert isinstance(root, nltk.Tree)
         assert len(root) > 0
         end_index = index - 1  # it will >= index because have at least one subtree
         for subtree in root:
