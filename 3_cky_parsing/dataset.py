@@ -10,6 +10,7 @@ def load_sentences(
     # nltk.download("large_grammars")
     raw = nltk.data.load(path)
     extract = nltk.parse.util.extract_test_sentences(raw)
+    # Ignore the counts here. They are useless because they are based on another grammar.
     sentences, _ = map(list, zip(*extract))
     return sentences
 
@@ -26,12 +27,14 @@ def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
     Actions:
     1. Convert multi-branch tree into binary tree:
 
-        Given `A -> (B,C,D,E)`, yield:
-        `A -> (__B__C__D__, E) ; __B__C__D__ -> (__B__C__, D) ; __B__C__ -> (B, C)`
+        Given `A -> (B,C,D,E)`, replace it by:
+        `A -> (__A__B__C__D__, E) ; __A__B__C__D__ -> (__A__B__C__, D) ; __A__B__C__ -> (B, C)`
 
     2. Remove unary lexical productions:
 
-        Given `A -> B -> C -> D -> word`, replace it with `A -> word`
+        Given `A -> B -> C -> D -> word`, replace it by `A -> word`.
+
+        Given `A -> B -> C -> D E`, replace it by `A -> D E`
     """
 
     assert not grammar.is_chomsky_normal_form()
@@ -43,8 +46,7 @@ def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
 
     for prod in grammar.productions():
         assert isinstance(prod, nltk.Production)
-        rhs, lhs = prod.rhs(), prod.lhs()
-        assert isinstance(lhs, nltk.Nonterminal)
+        rhs = prod.rhs()
 
         # Handle unary productions
         if len(rhs) == 1:
@@ -58,14 +60,16 @@ def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
 
         """
         Convert multi-branch tree into binary tree
-        Given `A -> (B,C,D,E)`, yield:
-        `A -> (__B__C__D__, E) ; __B__C__D__ -> (__B__C__, D) ; __B__C__ -> (B, C)`    
+        Given `A -> (B,C,D,E)`, replace it by:
+        `A -> (__A__B__C__D__, E) ; __A__B__C__D__ -> (__A__B__C__, D) ; __A__B__C__ -> (B, C)`
         """
+        lhs = prod.lhs()
+        assert isinstance(lhs, nltk.Nonterminal)
         all_rhs = list[nltk.Nonterminal](rhs)
-        root = lhs.symbol()
-        all_symbols: list[str] = [root] + list(map(lambda x: x.symbol(), all_rhs))
+        all_symbols: list[str] = list(map(lambda x: x.symbol(), [lhs] + all_rhs))
+
         while len(all_rhs) > 2:
-            # pop the rightmost one on the right-hand-side
+            # pop the rightmost one on the right-hand-side, this is a "real" node
             child_right = all_rhs.pop()
             all_symbols.pop()
 
@@ -74,13 +78,14 @@ def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
             child_left = nltk.Nonterminal(new_symbol)
             lhs_to_productions[lhs].add(nltk.Production(lhs, (child_left, child_right)))
 
-            # process the new "fake" symbol in next loop
+            # process the new "fake" node in next loop
             lhs = child_left
-        lhs_to_productions[lhs].add(nltk.Production(lhs, all_rhs))
+        lhs_to_productions[lhs].add(nltk.Production(lhs, all_rhs))  # Last 2 "real" node
 
     """
     Remove unary lexical productions:
-    Given `A -> B -> C -> D -> word` yields with `A -> word`
+    Given `A -> B -> C -> D -> word`, replace it by `A -> word`.
+    Given `A -> B -> C -> D E`, replace it by `A -> D E`
     """
     productions = set.union(*lhs_to_productions.values())  # All valid productions
     for prod in unary_lexical:  # All invalid productions, aka. A -> NT

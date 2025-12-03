@@ -2,7 +2,6 @@ import nltk
 
 from typing import override
 from dataclasses import dataclass
-from collections import defaultdict
 import math
 
 from .base import ChartBase
@@ -17,6 +16,17 @@ class ProbBackpointerRecord:
 
 
 class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
+    """
+    Chart class for Viterbi CKY parser.
+
+    The value type of record `dict` is `ProbBackpointerRecord`,
+    recording the log probability, middle index, left nonterminal, and right nonterminal reduced to the node.
+    Only the one with max log probability would be recorded.
+
+    Note that we record left nonterminal and right nonterminal in additional.
+    This allows us to avoid recalculating the production rules during trace.
+    """
+
     def __init__(
         self,
         sentence: list[str],
@@ -27,17 +37,12 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
         """
         :param sentence: list of words.
         :param inv_terminal_productions: dict that map terminal => {nt in all (nt -> terminal)}
-        :param leaf_probs: dict with the strcuture (word, NT) => probability, given rule (NT -> word)
-        :param nonleaf_probs: dict with the strcuture (NT_left, NT_right, NT_parent) => probability,
+        :param leaf_probs: dict that map (word, NT) => probability, given rule (NT -> word)
+        :param nonleaf_probs: dict that map (NT_left, NT_right, NT_parent) => probability,
                given rule (NT_parent -> NT_left NT_right)
         """
-
-        neginf = lambda: -float("inf")
         self._leaf_probs = leaf_probs
-        self._nonleaf_logprobs = defaultdict[tuple[str, str, str], float](neginf)
-        self._nonleaf_logprobs.update(
-            {k: math.log(v) for k, v in nonleaf_probs.items()}
-        )
+        self._nonleaf_logprobs = {k: math.log(v) for k, v in nonleaf_probs.items()}
         super().__init__(sentence, inv_terminal_productions=inv_terminal_productions)
 
     @override
@@ -56,13 +61,19 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
             (left_nonterminal, right_nonterminal, parent_nonterminal)
         ]
         new_logprob = left_logprob + right_logprob + trans_logprob
-        assert not math.isinf(new_logprob)
+        assert math.isfinite(new_logprob)
 
+        records = self.get(left_idx, right_idx)  # NT => record value
+        if parent_nonterminal not in records:
+            records[parent_nonterminal] = ProbBackpointerRecord(
+                logprob=new_logprob,
+                mid_idx=mid_idx,
+                left_nonterminal=left_nonterminal,
+                right_nonterminal=right_nonterminal,
+            )
         # only record the one with max probability.
-        record = self.get(left_idx, right_idx)
-        best_logprob = record[parent_nonterminal].logprob
-        if new_logprob > best_logprob:
-            record[parent_nonterminal] = ProbBackpointerRecord(
+        elif new_logprob > records[parent_nonterminal].logprob:
+            records[parent_nonterminal] = ProbBackpointerRecord(
                 logprob=new_logprob,
                 mid_idx=mid_idx,
                 left_nonterminal=left_nonterminal,
@@ -76,32 +87,36 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
 
         return `None` if no such a tree.
         """
-        if root_nonterminal not in self.get(0, self._sentence_length - 1).keys():
+        if root_nonterminal not in self.get(0, self._sentence_length - 1):
             return None
 
         def recur(left_idx: int, right_idx: int, nonterminal: str | None = None):
-            record = self.get(left_idx, right_idx)
-            # $nonterminal should be current node with max probability, or `start` for root node.
+            records = self.get(left_idx, right_idx)
+            # nonterminal should be current node with max probability, or `start` for root node.
             if nonterminal is None:
-                nonterminal = self._dict_argmax(record)
-            record = record[nonterminal]
+                nonterminal = self._dict_argmax(records)
+            backpointer = records[nonterminal]
 
             # For leaf, left_nonterminal=right_nonterminal=word
             if left_idx == right_idx:
                 return nltk.ProbabilisticTree(
                     nonterminal,
-                    [record.left_nonterminal],
-                    prob=math.exp(record.logprob),
+                    [backpointer.left_nonterminal],
+                    prob=math.exp(backpointer.logprob),
                 )
 
-            # Find out left and right subtrees.
-            left_tree = recur(left_idx, record.mid_idx, record.left_nonterminal)
-            right_tree = recur(record.mid_idx + 1, right_idx, record.right_nonterminal)
+            # Find out left subtree and right subtree.
+            left_tree = recur(
+                left_idx, backpointer.mid_idx, backpointer.left_nonterminal
+            )
+            right_tree = recur(
+                backpointer.mid_idx + 1, right_idx, backpointer.right_nonterminal
+            )
 
             # DO NOT use logprob kwarg here, because nltk will
             # use 2**logprob to obtain prob, rather than exp(logprob)
             result = nltk.ProbabilisticTree(
-                nonterminal, [left_tree, right_tree], prob=math.exp(record.logprob)
+                nonterminal, [left_tree, right_tree], prob=math.exp(backpointer.logprob)
             )
             return result
 
@@ -109,11 +124,12 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
         return result
 
     @override
-    def _init_leaf_record(
+    def _calc_leaf_value(
         self, idx: int, word: str, nonterminal: str
     ) -> ProbBackpointerRecord:
-        # Prob must be in the dict
+        # Prob must be in the dict that map (T, NT) => prob
         prob = self._leaf_probs[(word, nonterminal)]
+        assert 0.0 < prob <= 1.0
         return ProbBackpointerRecord(
             logprob=math.log(prob),
             mid_idx=idx,
@@ -122,22 +138,14 @@ class ProbBackpointerChart(ChartBase[ProbBackpointerRecord]):
         )
 
     @staticmethod
-    @override
-    def _make_default_record() -> ProbBackpointerRecord:
-        return ProbBackpointerRecord(
-            logprob=-float("inf"), mid_idx=-1, left_nonterminal="", right_nonterminal=""
-        )
-
-    @staticmethod
     def _dict_argmax(data: dict[str, ProbBackpointerRecord]) -> str:
         """
-        Return the best_key so that the probability
-        `data[best_key].logprob` >= `data[key].logprob` for all `key` in `data`.
+        Return the `best_key` so that the probability
+        `data[best_key].logprob >= data[key].logprob` for all `key` in `data`.
         """
-
-        best_logprob, best_key = -float("inf"), None
-        for k, rec in data.items():
-            if rec.logprob > best_logprob:
-                best_prob, best_key = rec.logprob, k
+        best_logprob, best_key = -math.inf, None
+        for k, v in data.items():
+            if v.logprob > best_logprob:
+                best_logprob, best_key = v.logprob, k
         assert best_key is not None
         return best_key

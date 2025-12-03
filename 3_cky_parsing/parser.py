@@ -2,7 +2,13 @@ import nltk
 
 from itertools import product
 
-from chart import ChartBase, CountingChart, BackpointerChart, ProbBackpointerChart
+from chart import (
+    ChartBase,
+    BackpointerChart,
+    CountingChart,
+    KeyOnlyChart,
+    ProbBackpointerChart,
+)
 
 
 def grammar_to_dict(
@@ -45,6 +51,7 @@ class CkyParser:
     """
     CKY parser class with different detailed algorithms.
 
+    - `recognize`: standard CKY algorithm to judge whether the given sentence is grammatical.
     - `parse`: standard CKY algorithm to find out all parse trees.
     - `count`: Find out counts of all parse trees without building them.
     - `viterbi`: Viterbi-CKY algorithm to find out the parse tree with max probability.
@@ -61,8 +68,9 @@ class CkyParser:
         """
         Main logic of CKY algorithm.
         """
-        # Terminal records are initialized by the Chart class.
-        assert isinstance(chart, ChartBase)
+        # Leaf records are initialized by the Chart class.
+        # See ChartBase.__init__
+
         # for each width b from 2 to n:
         for length in range(1, len(sentence)):
             # for each start position i from 1 to n-b+1:
@@ -76,13 +84,23 @@ class CkyParser:
         """
         Try to reduce (left, mid) (mid+1, right) -> (left, right) with all possible rules
         """
-        # for each B in Ch(i,i+k) and C in Ch(i+k,i+b):
+        # for each key B in Chart(i,i+k) and key C in Chart(i+k,i+b):
         for left_nt, right_nt in product(
             chart.get(left, mid).keys(), chart.get(mid + 1, right).keys()
         ):
             # for each production rule A -> B C:
             for pa_nt in self._inv_nonterminal_production.get((left_nt, right_nt), ()):
+                # Chart(i,i+b).reduce(key=A, left=(i,i+k,B), right=(i+k,i+b,C))
                 chart.reduce(left, right, mid, left_nt, right_nt, pa_nt)
+
+    def recognize(self, sentence: list[str]) -> bool:
+        """
+        Return whether the given sentence is grammatical.
+        """
+        chart = KeyOnlyChart(sentence, self._inv_terminal_production)
+        self._cky_one_sentence(sentence, chart)
+        accept = chart.output(self._start_symbol)
+        return accept
 
     def parse(self, sentence: list[str]) -> list[nltk.Tree]:
         """
@@ -101,13 +119,6 @@ class CkyParser:
         self._cky_one_sentence(sentence, chart)
         cnt = chart.output(self._start_symbol)
         return cnt
-
-    def recognize(self, sentence: list[str]) -> bool:
-        """
-        Return whether the given sentence is grammatical.
-        """
-        # Just used a counter, because they are same in terms of time complexity.
-        return self.count(sentence) > 0
 
     def viterbi(
         self,

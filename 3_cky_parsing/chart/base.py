@@ -1,34 +1,31 @@
 import abc
 from typing import Generic, TypeVar, Any
-from collections import defaultdict
 
 
-RecordedT = TypeVar("RecordedT")
+RecordValueT = TypeVar("RecordValueT")
 
 
-class ChartBase(Generic[RecordedT], abc.ABC):
+class ChartBase(Generic[RecordValueT], abc.ABC):
     """
     The CKY Parser chart data structure with features:
-    - **Compact storage**: 1D-list with size=(N+1)*N//2, ~50% smaller than 2D-list with N*N.
-    - **Abstract induction interface**: Subclasses only need to implement this method
-        to perform the core calculations of different algorithms.
+    - **Compact storage**: 1D-list with `size=(N+1)*N//2`, ~50% smaller than 2D-list with `N*N`.
 
     Structure:
     ```
-    idx | 0 1 2 3 ... N-1 left (row index)
+    idx | 0 1 2 3 ... N-1 right (column index)
     ---------------------
     0   | D D D D ... D
     1   |   D D D ... D
     2   |     D D ... D
-    ... |
+    ... |         ... D
     N-1 |             D
-    right (column index)
-
-    D is a dict that map nonterminal => record (so this is a 3D chart in actual)
-
-    Note that there is empty in the cell[l, r] with l > r.
-    An exception would be raised given such an access location.
+    left (row index)
     ```
+
+    D is a dict that map nonterminal: str => record_value: RecordValueT (so this is a 3D chart in actual)
+
+    Note that there is void in the cell at location [l, r] with l > r.
+    An exception would be raised given such an access location.
     """
 
     def __init__(
@@ -41,17 +38,21 @@ class ChartBase(Generic[RecordedT], abc.ABC):
         self._sentence_length = len(sentence)
         assert self._sentence_length > 0
 
-        # Create the storage structure
+        # Create the storage structure, initially all as empty dict that map NT => record_value
         self._data = [
-            defaultdict[str, RecordedT](self._make_default_record)
+            dict[str, RecordValueT]()
             for _ in range((self._sentence_length + 1) * self._sentence_length // 2)
         ]
 
         # Initializing leaf records
+        # for each i from 1 to n:
         for idx, word in enumerate(sentence):
+            # for each production rule A -> w_i:
             for nt in inv_terminal_productions.get(word, ()):
-                init_rec = self._init_leaf_record(idx, word, nt)
-                self._data[self._calc_offset(idx, idx)][nt] = init_rec
+                # calculate leaf value V by Chart.calc_leaf_value(i,i+1,w_i,A)
+                leaf_rec = self._calc_leaf_value(idx, word, nt)
+                # Add key A to Chart(i,i+1) with value V
+                self._data[self._calc_offset(idx, idx)][nt] = leaf_rec
 
     def _calc_offset(self, left: int, right: int) -> int:
         """
@@ -81,12 +82,10 @@ class ChartBase(Generic[RecordedT], abc.ABC):
         offset = left * (self._sentence_length * 2 - (left - 1)) // 2 + right - left
         return offset
 
-    def get(self, left: int, right: int) -> defaultdict[str, RecordedT]:
+    def get(self, left: int, right: int) -> dict[str, RecordValueT]:
         """
-        Get the records at tree span (`left`, `right`)
-
-        :return: a dict at tree span (`left`, `right`) that map nonterminal => record value
-        :rtype: defaultdict[str, RecordedT]
+        Get the records at tree span (`left`, `right`),
+        a dict that map nonterminal => record_value
         """
         return self._data[self._calc_offset(left, right)]
 
@@ -107,6 +106,9 @@ class ChartBase(Generic[RecordedT], abc.ABC):
 
         Record the parent tree with span (`left_idx`, `right_idx`), reduced by:
         (`left_nonterminal`, `right_nonterminal`) <- `parent_nonterminal`.
+
+        The key of the new record should be `parent_nonterminal`,
+        while the value should be calculated by subclass.
         """
         pass
 
@@ -118,17 +120,9 @@ class ChartBase(Generic[RecordedT], abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _init_leaf_record(self, idx: int, word: str, nonterminal: str) -> RecordedT:
+    def _calc_leaf_value(self, idx: int, word: str, nonterminal: str) -> RecordValueT:
         """
-        Perform the initialization of leaf record in CKY algorithm.
-
-        :param idx: index of `word` in the sentence.
-        :param word: word of the sentence at `idx`.
-        :param nonterminal: in the production that `nonterminal -> word`
+        Return initial record value of the leaf in CKY algorithm,
+        given rule `nonterminal` -> `word` and the `idx` of `word` in sentence.
         """
-        pass
-
-    @staticmethod
-    @abc.abstractmethod
-    def _make_default_record() -> RecordedT:
         pass
