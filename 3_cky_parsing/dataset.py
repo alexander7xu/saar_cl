@@ -25,12 +25,14 @@ def load_grammar(path: str = "nltk:/grammars/large_grammars/atis.cfg") -> nltk.C
 def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
     """
     Actions:
-    1. Convert multi-branch tree into binary tree:
+    1. Convert rules like `A -> B word` into `A -> B __word__` and `__word__ -> word`
+
+    2. Convert multi-branch tree into binary tree:
 
         Given `A -> (B,C,D,E)`, replace it by:
         `A -> (__A__B__C__D__, E) ; __A__B__C__D__ -> (__A__B__C__, D) ; __A__B__C__ -> (B, C)`
 
-    2. Remove unary lexical productions:
+    3. Remove unary lexical productions:
 
         Given `A -> B -> C -> D -> word`, replace it by `A -> word`.
 
@@ -46,7 +48,7 @@ def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
 
     for prod in grammar.productions():
         assert isinstance(prod, nltk.Production)
-        rhs = prod.rhs()
+        rhs = list[nltk.Nonterminal | str](prod.rhs())
 
         # Handle unary productions
         if len(rhs) == 1:
@@ -57,39 +59,58 @@ def convert_cfg_to_chomsky_normal_form(grammar: nltk.CFG) -> nltk.CFG:
                 assert isinstance(rhs, nltk.Nonterminal)
                 unary_lexical.add(prod)
             continue
+        assert len(rhs) >= 2
 
         """
-        Convert multi-branch tree into binary tree
+        1. Convert rules like `A -> B word` into `A -> B __word__` and `__word__ -> word`
+        """
+        all_rhs = list[nltk.Nonterminal]()
+        for item in rhs:
+            if isinstance(item, str):  # A -> ... word ...
+                vitrual_nt = nltk.Nonterminal(f"__{item}__")
+                # Add "__word__ -> word" as valid rule
+                lhs_to_productions[vitrual_nt].add(nltk.Production(vitrual_nt, item))
+                # Replace original A -> ... word ... by A -> ... __word__ ...
+                item = vitrual_nt
+            assert isinstance(item, nltk.Nonterminal)
+            all_rhs.append(item)
+
+        """
+        2. Convert multi-branch tree into binary tree
         Given `A -> (B,C,D,E)`, replace it by:
         `A -> (__A__B__C__D__, E) ; __A__B__C__D__ -> (__A__B__C__, D) ; __A__B__C__ -> (B, C)`
         """
         lhs = prod.lhs()
         assert isinstance(lhs, nltk.Nonterminal)
-        all_rhs = list[nltk.Nonterminal](rhs)
-        all_symbols: list[str] = list(map(lambda x: x.symbol(), [lhs] + all_rhs))
+        all_names: list[str] = list(map(lambda x: x.symbol(), [lhs] + all_rhs))
 
         while len(all_rhs) > 2:
             # pop the rightmost one on the right-hand-side, this is a "real" node
-            child_right = all_rhs.pop()
-            all_symbols.pop()
+            real_right = all_rhs.pop()
+            all_names.pop()  # Also remove its name
 
-            # create a "fake" symbol and node for the "fake" branch
-            new_symbol = f"__{'__'.join(all_symbols)}__"
-            child_left = nltk.Nonterminal(new_symbol)
-            lhs_to_productions[lhs].add(nltk.Production(lhs, (child_left, child_right)))
+            # create a vitrual node for the vitrual subtree
+            virtual_left = nltk.Nonterminal(f"__{'__'.join(all_names)}__")
+            lhs_to_productions[lhs].add(
+                nltk.Production(lhs, (virtual_left, real_right))
+            )
 
-            # process the new "fake" node in next loop
-            lhs = child_left
+            # process the new vitrual node in next loop
+            lhs = virtual_left
         lhs_to_productions[lhs].add(nltk.Production(lhs, all_rhs))  # Last 2 "real" node
 
     """
-    Remove unary lexical productions:
+    3. Remove unary lexical productions:
     Given `A -> B -> C -> D -> word`, replace it by `A -> word`.
     Given `A -> B -> C -> D E`, replace it by `A -> D E`
     """
-    productions = set.union(*lhs_to_productions.values())  # All valid productions
-    for prod in unary_lexical:  # All invalid productions, aka. A -> NT
-        lhs_to_productions[prod.lhs()].add(prod)  # Now map all possible productions
+    # All valid productions
+    productions: set[nltk.Production] = set.union(*lhs_to_productions.values())
+
+    # Add all invalid productions into the map, so that it can map to all possible productions
+    for prod in unary_lexical:
+        lhs_to_productions[prod.lhs()].add(prod)
+
     while len(unary_lexical) > 0:
         rule = unary_lexical.pop()  # A -> B
         lhs = rule.lhs()

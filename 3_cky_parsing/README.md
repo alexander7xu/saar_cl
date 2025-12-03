@@ -57,9 +57,11 @@ svgling==0.5.0
 
 ### The Idea of Grammar Normalization
 
-Only rules in `A → B C`, `A -> a` is allowed by Chomsky Normal Form. However, the nltk.CFG contains rules that `A -> NT` or `A -> B C D ...`. To normalize the grammar, we need to:
-- Convert multi-branch trees `A -> B C D E` into binary trees: `A -> __B__C__D__ E`, `__B__C__D__ -> __B__C__ D`, `__B__C__ -> B C`.
-- Reduce rules `A -> B -> C -> a` as `A -> a` ; Or reduce rules `A -> B -> C -> D E` as `A -> D E`.
+Only rules in `A → B C`, `A -> word` is allowed by Chomsky Normal Form. However, the original nltk.CFG may contain rules not follow the format. To normalize the grammar, we need to:
+- Deal with the case `A -> B word ...`: create a virtual nonterminal and production `__word__ -> word`, replace the original by ``A -> B __word__ ...``
+- Deal with the case `A -> B C D E`: use virtual nontermnials to convert the multi-branch tree into binary, e.g. `A -> __B__C__D__ E`, `__B__C__D__ -> __B__C__ D`, `__B__C__ -> B C`.
+- Deal with the case `A -> B -> C -> a`: reduce it as `A -> a`.
+- Deal with the case `A -> B -> C -> D E`: reduce it as `A -> D E`.
 
 See `convert_cfg_to_chomsky_normal_form()` in `./dataset.py`.
 
