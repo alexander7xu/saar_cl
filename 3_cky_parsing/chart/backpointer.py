@@ -56,24 +56,24 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
             return list()
 
         # Avoid repeated calculation, beacuse a subtree may occur in different trees.
-        trees_buffer = dict[tuple[int, int, str], list[nltk.Tree]]()
+        trees_cache = dict[tuple[int, int, str], list[nltk.Tree]]()
 
         def recur(left_idx: int, right_idx: int, nonterminal: str) -> list[nltk.Tree]:
-            key = (left_idx, right_idx, nonterminal)
-            if key in trees_buffer:
-                return trees_buffer[key]
+            cache_key = (left_idx, right_idx, nonterminal)
+            if cache_key in trees_cache:
+                return trees_cache[cache_key]
             backpointers = self.get(left_idx, right_idx)[nonterminal]
 
             # For leaf, left_nonterminal=right_nonterminal=word
             if left_idx == right_idx:
                 assert len(backpointers) == 1
-                trees = trees_buffer[key] = [
+                trees = trees_cache[cache_key] = [
                     nltk.Tree(nonterminal, [backpointers[0].left_nonterminal])
                 ]
                 return trees
 
-            # Recursively build the left and right subtrees to construct the tree.
-            trees = trees_buffer[key] = list()
+            # Recursively build the left and right subtrees to construct new trees.
+            trees = trees_cache[cache_key] = list()
             for bp in backpointers:
                 left_trees = recur(left_idx, bp.mid_idx, bp.left_nonterminal)
                 right_trees = recur(bp.mid_idx + 1, right_idx, bp.right_nonterminal)

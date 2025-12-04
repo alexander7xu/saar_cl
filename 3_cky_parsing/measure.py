@@ -10,20 +10,22 @@ def tree_to_spans(tree: nltk.Tree) -> list[tuple[str, int, int]]:
     Example:
     ```
     given a tree:
-            A
-           / \
-          B   C
-         / \  |
-        D   E |
-        |   | |
-        w1 w2 w3
+              A
+           /  | \
+          B   C  D
+         / \  |  |
+        E   F |  G
+        |   | |  |
+        w0 w1 w2 w3
 
-    produce:
-        (D, 0, 0)
-        (E, 1, 1)
+    produce in post-order:
+        (E, 0, 0)
+        (F, 1, 1)
         (B, 0, 1)
         (C, 2, 2)
-        (A, 0, 2)
+        (G, 3, 3)
+        (D, 3, 3)
+        (A, 0, 3)
     ```
     """
 
@@ -50,11 +52,11 @@ def tree_f1_score(tree_gt: nltk.Tree, tree_pred: nltk.Tree, unlabeled: bool) -> 
     """
 
     def _spans_same_rate(spans: list[tuple], same: set[tuple]) -> float:
-        # calculate the rate that items in spans occurs in same
-        correct = 0
+        # calculate the rate that items in spans occur in same
+        count = 0
         for item in spans:
-            correct += int(item in same)
-        return correct / len(spans)
+            count += 1 if item in same else 0
+        return count / len(spans)
 
     spans_gt = tree_to_spans(tree_gt)
     spans_pred = tree_to_spans(tree_pred)

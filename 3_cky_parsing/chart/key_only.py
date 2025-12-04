@@ -30,8 +30,8 @@ class KeyOnlyChart(ChartBase[None]):
         """
         Judge whether the sentence is grammatical
         """
-        accept = root_nonterminal in self.get(0, self._sentence_length - 1)
-        return accept
+        accepted = root_nonterminal in self.get(0, self._sentence_length - 1)
+        return accepted
 
     @override
     def _calc_leaf_value(self, idx: int, word: str, nonterminal: str) -> None:

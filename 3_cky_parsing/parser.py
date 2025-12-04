@@ -19,7 +19,7 @@ def grammar_to_dict(
 
     Return:
     - inv_nonterminal_production: dict that map (left, right) => {set of nonterminal parents}
-    - inv_terminal_production: dict that map terminal => {set of nonterminal Parents}
+    - inv_terminal_production: dict that map terminal => {set of nonterminal parents}
     """
 
     inv_nonterminal_production = dict[tuple[str, str], set[str]]()
@@ -99,8 +99,8 @@ class CkyParser:
         """
         chart = KeyOnlyChart(sentence, self._inv_terminal_production)
         self._cky_one_sentence(sentence, chart)
-        accept = chart.output(self._start_symbol)
-        return accept
+        accepted = chart.output(self._start_symbol)
+        return accepted
 
     def parse(self, sentence: list[str]) -> list[nltk.Tree]:
         """
