@@ -6,13 +6,19 @@ from collections import defaultdict
 
 def load_sentences(
     path: str = "nltk:/grammars/large_grammars/atis_sentences.txt",
-) -> list[list[str]]:
+) -> tuple[list[list[str]], list[int]]:
+    """
+    Load sentences and ground truth number of parses
+
+    - Return:
+        - list[list[str]] a list of sentences as lists of words.
+        - list[int] number of parses corresponding to each sentence.
+    """
     # nltk.download("large_grammars")
     raw = nltk.data.load(path)
     extract = nltk.parse.util.extract_test_sentences(raw)
-    # Ignore the counts here. They are useless because they are based on another grammar.
-    sentences, _ = map(list, zip(*extract))
-    return sentences
+    sentences, counts = map(list, zip(*extract))
+    return sentences, counts
 
 
 def load_grammar(path: str = "nltk:/grammars/large_grammars/atis.cfg") -> nltk.CFG:

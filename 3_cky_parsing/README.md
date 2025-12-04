@@ -44,11 +44,11 @@ svgling==0.5.0
 ## Runtime
 
 - On my computer it take ~1s to recognize, ~1s to count, and ~2s to parse all 98 sentences in the dataset.
-- However, running NLTK parser to get ground truths will take ~1min. **My algorithm is extremely faster than NLTK**.
+- However, running NLTK parser to test the grammar will take ~1min. **My algorithm is extremely faster than NLTK**.
 
 ## Extra Points
 
-- I implemented a method to convert the nltk format CFG into Chomsky Normal Form.
+- I implemented a method to convert the NLTK format CFG into Chomsky Normal Form.
 - I implemented a method to count the number of parse trees without actually building them.
 - I plotted a Sentence Length vs. Speed & Number of Trees curve to compare the efficiency (**in nanosecond precision**).
 - I implemented the labeled and unlabeled F1 score calculation and tested it with the example parse trees of sentence `But the concept is workable`.
@@ -57,7 +57,7 @@ svgling==0.5.0
 
 ### The Idea of Grammar Normalization
 
-Only rules in `A → B C`, `A -> word` is allowed by Chomsky Normal Form. However, the original nltk.CFG may contain rules not follow the format. To normalize the grammar, we need to:
+Only rules in `A → B C`, `A -> word` is allowed by Chomsky Normal Form. However, the original `nltk.CFG` may contain rules not follow the format. To normalize the grammar, we need to:
 - Deal with the case `A -> B word ...`: create a virtual nonterminal and production `__word__ -> word`, replace the original by ``A -> B __word__ ...``
 - Deal with the case `A -> B C D E`: use virtual nontermnials to convert the multi-branch tree into binary, e.g. `A -> __B__C__D__ E`, `__B__C__D__ -> __B__C__ D`, `__B__C__ -> B C`.
 - Deal with the case `A -> B -> C -> a`: reduce it as `A -> a`.
@@ -81,9 +81,9 @@ for bp in backpointers:
     )
 ```
 
-We can see that for each backpointer $p$, we first build the left subtrees collection $L_p$ and right subtrees collection $R_p$, then use each pair in their Cartesian product $L_p\times R_p$ to build a new tree. Therefore, the total number of subtrees with current node as root would be $\sum_p|L_p\times R_p| = \sum_p|L_p|\times |R_p|$. What we need to do is replacing the backpointers with the countings $|L_p|$ or $|R_p|$, and summing up them on-the-fly when reducing in CKY.
+We can see that for each backpointer $p$, we first build the left subtrees collection $L_p$ and right subtrees collection $R_p$, then use each pair in their Cartesian product $L_p\times R_p$ to build a new tree. Therefore, the total number of subtrees with current node as root would be $\sum_p|L_p\times R_p| = \sum_p|L_p|\times |R_p|$. What we need to do is replacing the backpointers with the countings $|L_p|$ or $|R_p|$, and summing up their product on-the-fly when reducing in CKY.
 
-When reducing $X_1\ X_2\larr A$ with left span $[l,m]$ and right span $[m+1,r]$, the counting on the chart is summed up by: $C(l,r,A) = C(l,r,A) + C(l,m,X_1)\times C(m+1,r,X_2)$. The default values of $C$ are $1$ for each leaf $C(i,i,\bullet)$, and $0$ for others. Note that we dont need backpointers and traceback in this algorithm, the countings could be calculated on-the-fly. We directly output $C(1,N,\sigma)$ as the total number of parse trees. The algorithm can use $O(N^3)$ time complexity to count the number of parse trees, without the additional $O(NM)$ for tree building.
+When reducing $X_1\ X_2\larr A$ with left span $[l,m]$ and right span $[m+1,r]$, the counting on the chart is summed up by: $C(l,r,A) = C(l,r,A) + C(l,m,X_1)\times C(m+1,r,X_2)$. The default values of $C$ are $1$ for each leaf $C(i,i,\bullet)$, and $0$ for others. Note that we dont need backpointers and traceback in this algorithm, the countings could be calculated on-the-fly. We directly output $C(1,N,\sigma)$ as the total number of parses. The algorithm can use $O(N^3)$ time complexity to count the number of parses, without the additional $O(NM)$ for tree-building.
 
 I plotted a Sentence Length vs. Speed & Number of Trees curve to compare and analyse its efficiency against the standard parser which builds all the parse trees.
 
@@ -107,13 +107,13 @@ See the corresponding section in the main notebook.
 ### The Idea of Viterbi CKY Parser
 
 - It's extremely easy to implement the Viterbi CKY Parser, just modify the chart used in standard CKY parser to record only the backpointer with max log-probability.
--  When reducing $X_L\ X_R\larr A$ with left span $[l,m]$ and right span $[m+1,r]$, the new log-probability is calculated by: $Y=\text{log}\ P(A\rarr X_1\ X_2)+M(l,m,X_L)+M(m+1,r,X_R)$. If $Y>M(l,r,A)$, then update $M(l,r,A)=Y$ and replace the backpointer by $(m,B,C)$. The default values of $L$ are $\text{log}\ P(A\rarr W_i)$ for each leaf $L(i,i,A)$, and $-\infty$ for others.
+-  When reducing $X_L\ X_R\larr A$ with left span $[l,m]$ and right span $[m+1,r]$, the new log-probability is calculated by: $Y=\text{log}\ P(A\rarr X_1\ X_2)+M(l,m,X_L)+M(m+1,r,X_R)$. If $Y>M(l,r,A)$, then update $M(l,r,A)=Y$ and replace the backpointer by $(m,B,C)$. The default values of $M$ are $\text{log}\ P(A\rarr W_i)$ for each leaf $M(i,i,A)$, and $-\infty$ for others.
 
 See `CkyParser.viterbi()` in `./parser.py` and `ProbBackpointerChart` in `./chart/prob_backpointer.py`.
 
 ## Engineering Design Ideas
 
-We can see that severals variants of CKY parser share the same main logic. The only differences are on the charts. We can modify the original pseudocode as: 
+We can see that the several variants of CKY algorithm share the same backbone logic. The only differences are on the charts. We can modify the original pseudocode as: 
 
 ```
 Data structure:
@@ -141,7 +141,7 @@ Output: Chart(1,n).output(sigma)
 
 The data structure `Chart` extends the original `Ch` as a 3D table by `dict`. Beyond `key A`, `dict` enables us to record additional data as `value`. Such data could be countings for CKY counter, backpointers for standard parser, and backpointers with probability for viterbi parser. For CKY recognizer, because it does not need the `value` in `dict`, we can make all `value = None` so that `dict` in `Chart` is equivalent to `set` used in `Ch`.
 
-Therefore, we can design the chart as an abstract data structure class and implement it as different subclasses. By providing the same CKY algorithm backbone with these different chart object, we are able to avoid rewriting the backbone for every algorithm variants, thereby achieving the goal of efficient code reuse. As we seen in the pseudo-code, the interface of a chart class should contain these methods which will be implemented by the subclasses:
+Therefore, we can design the chart as an abstract data structure class and implement it as different subclasses. By providing the same CKY algorithm backbone with these different chart objects, we are able to avoid rewriting the backbone for every algorithm variants, thereby achieving the goal of efficient code reuse. As we seen in the pseudo-code, the interface of a chart class should contain these methods which will be implemented by the subclasses:
 -  `reduce(key=A, left=(i,i+k,B), right=(i+k,i+b,C))`: Add `key A` into the chart and calculate the corresponding `value`, given left span, right span, and production `A -> B C`.
 -  `output(sigma)`: Produce algorithm output based on the whole chart, given the root symbol `sigma`.
 -  `calc_leaf_value(i,i+1,w_i,A)`: Calculate the leaf record value in the chart, given index `i`, word `w_i`, and nonterminal `A` that `A -> w_i`.
@@ -157,6 +157,6 @@ CKY backbone:
 - `CkyParser._cky_one_sentence()` in `./parser.py` implements the core logic (the 3 loops for Dynamic Programming).
 - `CkyParser._reduce()` in `./parser.py` implements the recude action of CKY (2 inner loops). I separated it from `CkyParser._cky_one_sentence` because the depth of loops is too large to make the code ugly.
 
-CKY recognizing: `CkyParser.recognize()` in `./parser.py`. It use `KeyOnlyChart` in `./chart/key_only.py`, which works actually like a set of keys without values. It's worth noting that since the time and space complexity are exactly same, we can actually use CKY counting to replace CKY recognizing.
+CKY recognizing: `CkyParser.recognize()` in `./parser.py`. It use `KeyOnlyChart` in `./chart/key_only.py`, which works actually like a set of keys without values. It's worth noting that since the time and space complexity are exactly same, we can actually use CKY counter to replace CKY recognizer.
 
-CKY parsing: `CkyParser.parse()` in `./parser.py`. It use `BackpointerChart` in `./chart/backpointer.py`, which record the list of backpointers as the value of `dict`. Note that I used `list[nltk.Tree]` instead of `set[nltk.ImmutableTree]` to store the trees in building step. The correctness is verified by comparing with the ground truth generated by `nltk` parser. Accompanied by an worth noting phenomenon caused by `set-`, I discussed why it is correct and better in the last section of the main notebook.
+CKY parsing: `CkyParser.parse()` in `./parser.py`. It use `BackpointerChart` in `./chart/backpointer.py`, which record the list of backpointers as the value of `dict`. Note that I used `list[nltk.Tree]` instead of `set[nltk.ImmutableTree]` to store the trees in building step. The correctness is verified by comparing with the ground truth number of parses in the dataset. Accompanied by an worth noting phenomenon caused by `set`, I discussed why it is correct and better in the last section (Viterbi CKY) of the main notebook.
