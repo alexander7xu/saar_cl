@@ -104,11 +104,20 @@ class CkyParser:
 
     def parse(self, sentence: list[str]) -> list[nltk.Tree]:
         """
-        Return all parse trees of the given sentence.
+        Return all parse trees of the given sentence, **as list of nltk.Tree**.
         """
         chart = BackpointerChart(sentence, self._inv_terminal_production)
         self._cky_one_sentence(sentence, chart)
         trees = chart.output(self._start_symbol)
+        return trees
+
+    def parse_set(self, sentence: list[str]) -> set[nltk.ImmutableTree]:
+        """
+        Return all parse trees of the given sentence, **as set of nltk.ImmutableTree**.
+        """
+        chart = BackpointerChart(sentence, self._inv_terminal_production)
+        self._cky_one_sentence(sentence, chart)
+        trees = chart.output_set(self._start_symbol)
         return trees
 
     def count(self, sentence: list[str]) -> int:

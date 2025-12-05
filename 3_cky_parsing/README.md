@@ -43,8 +43,11 @@ svgling==0.5.0
 
 ## Runtime
 
-- On my computer it take ~1s to recognize, ~1s to count, and ~2s to parse all 98 sentences in the dataset.
+- On my computer it take ~1s to recognize, ~1s to count, and ~2s to parse (list version), and ~3s to parse (set version), on all 98 sentences in the dataset.
 - However, running NLTK parser to test the grammar will take ~1min. **My algorithm is extremely faster than NLTK**.
+- It will take ~1min to compare my Viterbi CKY parser against `nltk.ViterbiParser`.
+- It will take ~6s to build PCFG.
+- It will take ~1s for all other parts.
 
 ## Extra Points
 
@@ -67,7 +70,7 @@ See `convert_cfg_to_chomsky_normal_form()` in `./dataset.py`.
 
 ### The Idea of Counting without Building Trees
 
-In the code of building trees using backpointer (Line 75-83 in `./chart/backpointer.py`):
+In the code of building trees using backpointer (Line 77-86 in `./chart/backpointer.py`):
 
 ```python
 # Recursively build the left and right subtrees to construct new trees.
@@ -79,6 +82,7 @@ for bp in backpointers:
         nltk.Tree(nonterminal, children)
         for children in product(left_trees, right_trees)
     )
+return trees
 ```
 
 We can see that for each backpointer $p$, we first build the left subtrees collection $L_p$ and right subtrees collection $R_p$, then use each pair in their Cartesian product $L_p\times R_p$ to build a new tree. Therefore, the total number of subtrees with current node as root would be $\sum_p|L_p\times R_p| = \sum_p|L_p|\times |R_p|$. What we need to do is replacing the backpointers with the countings $|L_p|$ or $|R_p|$, and summing up their product on-the-fly when reducing in CKY.
@@ -159,4 +163,4 @@ CKY backbone:
 
 CKY recognizing: `CkyParser.recognize()` in `./parser.py`. It use `KeyOnlyChart` in `./chart/key_only.py`, which works actually like a set of keys without values. It's worth noting that since the time and space complexity are exactly same, we can actually use CKY counter to replace CKY recognizer.
 
-CKY parsing: `CkyParser.parse()` in `./parser.py`. It use `BackpointerChart` in `./chart/backpointer.py`, which record the list of backpointers as the value of `dict`. Note that I used `list[nltk.Tree]` instead of `set[nltk.ImmutableTree]` to store the trees in building step. The correctness is verified by comparing with the ground truth number of parses in the dataset. Accompanied by an worth noting phenomenon caused by `set`, I discussed why it is correct and better in the last section (Viterbi CKY) of the main notebook. By the way, if this is a mandatory requirement of the assignment, I also impelemented functions to convert `list[nltk.Tree]` into `set[nltk.ImmutableTree]`, in the last section of the notebook.
+CKY parsing: `CkyParser.parse_set()` and `CkyParser.parse()` in `./parser.py`. It use `BackpointerChart` in `./chart/backpointer.py`, which record the list of backpointers as the value of `dict`. Note that I implemented two versions with different return type `list[nltk.Tree]` and `set[nltk.ImmutableTree]` to store the trees in building step (corresponding to `BackpointerChart.output()` and `BackpointerChart.output_set()`). Both versions are verified as correct by comparing with the ground truth parses counts. Accompanied by another worth noting phenomenon caused by `set`, I discussed why the `list[nltk.Tree]` version **is correct and better** in the last section of the main notebook.

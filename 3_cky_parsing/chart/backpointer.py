@@ -51,6 +51,8 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
     def output(self, root_nonterminal: str) -> list[nltk.Tree]:
         """
         Find out all parse trees with `root_nonterminal` as root in the records.
+
+        **return:** list of nltk.Tree.
         """
         if root_nonterminal not in self.get(0, self._sentence_length - 1):
             return list()
@@ -58,7 +60,7 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
         # Avoid repeated calculation, beacuse a subtree may occur in different trees.
         trees_cache = dict[tuple[int, int, str], list[nltk.Tree]]()
 
-        def recur(left_idx: int, right_idx: int, nonterminal: str) -> list[nltk.Tree]:
+        def recur(left_idx: int, right_idx: int, nonterminal: str):
             cache_key = (left_idx, right_idx, nonterminal)
             if cache_key in trees_cache:
                 return trees_cache[cache_key]
@@ -79,6 +81,46 @@ class BackpointerChart(ChartBase[list[BackpointerRecord]]):
                 right_trees = recur(bp.mid_idx + 1, right_idx, bp.right_nonterminal)
                 trees.extend(
                     nltk.Tree(nonterminal, children)
+                    for children in product(left_trees, right_trees)
+                )
+            return trees
+
+        results = recur(0, self._sentence_length - 1, root_nonterminal)
+        return results
+
+    def output_set(self, root_nonterminal: str) -> set[nltk.ImmutableTree]:
+        """
+        Find out all parse trees with `root_nonterminal` as root in the records.
+
+        **return:** set of nltk.ImmutableTree.
+        """
+        if root_nonterminal not in self.get(0, self._sentence_length - 1):
+            return set()
+
+        # Avoid repeated calculation, beacuse a subtree may occur in different trees.
+        trees_cache = dict[tuple[int, int, str], set[nltk.ImmutableTree]]()
+
+        def recur(left_idx: int, right_idx: int, nonterminal: str):
+            cache_key = (left_idx, right_idx, nonterminal)
+            if cache_key in trees_cache:
+                return trees_cache[cache_key]
+            backpointers = self.get(left_idx, right_idx)[nonterminal]
+
+            # For leaf, left_nonterminal=right_nonterminal=word
+            if left_idx == right_idx:
+                assert len(backpointers) == 1
+                trees = trees_cache[cache_key] = {
+                    nltk.ImmutableTree(nonterminal, [backpointers[0].left_nonterminal])
+                }
+                return trees
+
+            # Recursively build the left and right subtrees to construct new trees.
+            trees = trees_cache[cache_key] = set[nltk.ImmutableTree]()
+            for bp in backpointers:
+                left_trees = recur(left_idx, bp.mid_idx, bp.left_nonterminal)
+                right_trees = recur(bp.mid_idx + 1, right_idx, bp.right_nonterminal)
+                trees.update(
+                    nltk.ImmutableTree(nonterminal, children)
                     for children in product(left_trees, right_trees)
                 )
             return trees
